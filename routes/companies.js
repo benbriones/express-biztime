@@ -2,7 +2,7 @@
 
 const express = require("express");
 
-const db = require("../db")
+const db = require("../db");
 const router = new express.Router();
 
 const { BadRequestError, NotFoundError } = require('../expressError');
@@ -40,8 +40,32 @@ router.get('/:code', async function (req, res, next) {
 
   if (!company) throw new NotFoundError(`Company not found, id: ${code}`);
 
-  return res.json({company})
+  return res.json({ company });
 
-})
+});
+
+
+/**Recieves json.  Returns info on the new comopany, JSON  like
+ * {company: {code, name, description}}*/
+router.post('/', async function (req, res, next) {
+
+  const { name, description } = req.body;
+
+  // if(!code) throw new BadRequestError("Must include code")
+
+  const results = await db.query(
+    `INSERT INTO companies (name, description)
+    Values ($1, $2)
+    Returning code, name, description`,
+    [name, description]
+  );
+
+  const company = results.rows[0];
+
+  // if (!company) throw new NotFoundError(`Company not found, id: ${code}`);
+
+  return res.status(201).json({ company });
+
+});
 
 module.exports = router;
