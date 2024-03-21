@@ -38,7 +38,7 @@ router.get('/:code', async function (req, res, next) {
 
   const company = results.rows[0];
 
-  if (!company) throw new NotFoundError(`Company not found, id: ${code}`);
+  if (!company) throw new NotFoundError(`Company not found, ${code}`);
 
   return res.json({ company });
 
@@ -66,14 +66,12 @@ router.post('/', async function (req, res, next) {
 
   const results = await db.query(
     `INSERT INTO companies (code, name, description)
-    Values ($1, $2, $3)
-    Returning code, name, description`,
+    VALUES ($1, $2, $3)
+    RETURNING code, name, description`,
     [code, name, description]
   );
 
   const company = results.rows[0];
-
-  // if (!company) throw new NotFoundError(`Company not found, id: ${code}`);
 
   return res.status(201).json({ company });
 
@@ -116,14 +114,14 @@ router.put('/:code', async function (req, res, next) {
 router.delete('/:code', async function (req, res, next) {
   const code = req.params.code;
 
-  const deleteCompany = await db.query(
+  const company = await db.query(
     `SELECT code, name, description
     FROM companies
     WHERE code = $1`, [code]
   );
 
-  if (!deleteCompany.rows[0]) throw new NotFoundError(`Company not found, id: ${code}`);
-
+  if (!company.rows[0]) throw new NotFoundError(`Company not found, ${code}`);
+  // TODO: RETURING code
   await db.query(
     `DELETE
     FROM companies
