@@ -31,25 +31,30 @@ router.get('/:id', async function (req, res) {
   const id = Number(req.params.id);
 
   const results = await db.query(
-    `SELECT id, amt, paid, add_date, paid_date, comp_code
+    `SELECT id, amt, paid, add_date, paid_date, code, name, description
     FROM invoices
+    JOIN companies ON companies.code = invoices.comp_code
     WHERE id = $1`,
     [id]
   );
 
-  const invoice = results.rows[0];
+  const invoiceData = results.rows[0];
 
-  if (!invoice) throw new NotFoundError(`Can't find invoice, ${id}`);
+  if (!invoiceData) throw new NotFoundError(`Can't find invoice, ${id}`);
 
 
-  const company = await db.query(
-    `SELECT code, name, description
-    FROM companies
-    WHERE code = $1`,
-    [invoice.comp_code]
-  );
-
-  invoice.company = company.rows[0];
+  const invoice = {
+    id: invoiceData.id,
+    amt: invoiceData.amt,
+    paid: invoiceData.paid,
+    add_date: invoiceData.add_date,
+    paid_data: invoiceData.paid_date,
+    company: {
+      code: invoiceData.code,
+      name: invoiceData.name,
+      description: invoiceData.description
+    }
+  };
 
   return res.json({ invoice });
 });
@@ -76,7 +81,7 @@ router.post('/', async function (req, res, next) {
   );
   const companyCodeExists = companyResults.rows[0];
 
-  if (!companyCodeExists) throw new NotFoundError("Company code not found ");
+  if (!companyCodeExists) throw new NotFoundError("Invoice not found ");
 
   const results = await db.query(
     `INSERT INTO invoices (comp_code, amt)
@@ -92,9 +97,17 @@ router.post('/', async function (req, res, next) {
 });
 
 
+/** Updates an invoice
+ * receives JSON like {amt}
+ * returns JSON like {invoice: {id, comp_code, amt, paid, add_date, paid_date}}
+ */
 router.put('/:id', async function (req, res) {
+
   const id = req.params.id;
   const amt = req.body.amt;
+
+  if (!amt) throw new BadRequestError("Must include body");
+
   const results = await db.query(
     `UPDATE invoices
     SET amt = $1
@@ -103,10 +116,34 @@ router.put('/:id', async function (req, res) {
     [amt, id]
   );
   const invoice = results.rows[0];
-  if (!invoice) throw new NotFoundError("Company code not found ");
+
+  if (!invoice) throw new NotFoundError("Invoice not found ");
 
   return res.json({ invoice: invoice });
 
 
 });
+
+/** Deletes an invoice
+ * returns JSON like {status: "deleted"}
+ */
+router.delete('/:id', async function (req, res) {
+  const id = req.params.id;
+
+  const result = await db.query(
+    `DELETE FROM invoices
+    WHERE id = $1
+    RETURNING id`,
+    [id]
+  );
+
+  if (!(result.rows[0])) throw new NotFoundError();
+
+  return res.json({ status: 'deleted' });
+
+});
+
+
+
+
 module.exports = router;
