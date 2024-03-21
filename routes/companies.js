@@ -49,15 +49,26 @@ router.get('/:code', async function (req, res, next) {
  * {company: {code, name, description}}*/
 router.post('/', async function (req, res, next) {
 
-  const { name, description } = req.body;
+  if (!req.body) throw new BadRequestError("Must include body"); // dont pass anything
 
-  // if(!code) throw new BadRequestError("Must include code")
+  const { code, name, description } = req.body;
+
+  const hasUndefined = [code, name, description].some(input => input === undefined);
+  if (hasUndefined) throw new BadRequestError("Request must include all required fields");
+
+  // if (!code) {
+  //   throw new BadRequestError("Request must include a code");
+  // } else if (!name) {
+  //   throw new BadRequestError("Request must include a name");
+  // } else if (!description) {
+  //   throw new BadRequestError("Request must include a description");
+  // }
 
   const results = await db.query(
-    `INSERT INTO companies (name, description)
-    Values ($1, $2)
+    `INSERT INTO companies (code, name, description)
+    Values ($1, $2, $3)
     Returning code, name, description`,
-    [name, description]
+    [code, name, description]
   );
 
   const company = results.rows[0];
@@ -67,5 +78,36 @@ router.post('/', async function (req, res, next) {
   return res.status(201).json({ company });
 
 });
+
+/** Edits an existing company,
+ * takes JSON like {name, description}
+ * returns JSON like {company: {code, name, description}}
+ */
+router.put('/:code', async function (req, res, next) {
+
+  if (!req.body) throw new BadRequestError("Must include body"); // dont pass anything
+  const { name, description } = req.body;;
+  const code = req.params.code;
+
+  const hasUndefined = [name, description].some(input => input === undefined);
+  if (hasUndefined) throw new BadRequestError("Request must include all required fields");
+
+  const results = await db.query(
+    `UPDATE companies
+    SET name = $1,
+    description = $2
+    WHERE code = $3
+    RETURNING code, name, description`,
+    [name, description, code]
+  );
+
+  const company = results.rows[0];
+  if (!company) throw new NotFoundError(`Company not found, id: ${code}`);
+
+  return res.json({ company });
+
+});
+
+router.delete('')
 
 module.exports = router;
