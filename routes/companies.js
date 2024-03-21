@@ -108,6 +108,30 @@ router.put('/:code', async function (req, res, next) {
 
 });
 
-router.delete('')
+
+/** Deletes an existing company,
+ * takes url param :code
+ * returns JSON like {status: deleted}
+ */
+router.delete('/:code', async function (req, res, next) {
+  const code = req.params.code;
+
+  const deleteCompany = await db.query(
+    `SELECT code, name, description
+    FROM companies
+    WHERE code = $1`, [code]
+  );
+
+  if (!deleteCompany.rows[0]) throw new NotFoundError(`Company not found, id: ${code}`);
+
+  await db.query(
+    `DELETE
+    FROM companies
+    WHERE code = $1`, [code]
+  );
+
+  return res.json({ status: "deleted" });
+
+});
 
 module.exports = router;
